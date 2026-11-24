@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Döviz Takip | Güncel Kurlar, Çevirici ve Grafikler</title>
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+          },
+          colors: {
+            navy: {
+              950: '#070b14',
+              900: '#0b1120',
+              800: '#111a2e',
+              700: '#1a2744',
+            },
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+</head>
+<body class="font-sans antialiased bg-slate-50 text-slate-900 dark:bg-navy-950 dark:text-slate-100 min-h-screen transition-colors duration-300 overflow-x-hidden selection:bg-emerald-500/30">
+
+  <!-- Arka Plan Dekoratif Işık Efektleri -->
+  <div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+    <div class="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-emerald-500/10 dark:bg-emerald-500/10 blur-3xl"></div>
+    <div class="absolute top-1/3 -right-32 w-96 h-96 rounded-full bg-sky-500/10 dark:bg-blue-600/10 blur-3xl"></div>
+    <div class="absolute bottom-0 left-1/3 w-80 h-80 rounded-full bg-indigo-500/5 dark:bg-indigo-500/10 blur-3xl"></div>
+  </div>
+
+  <!-- Toast Bildirim Alanı -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-xs w-full pointer-events-none"></div>
+
+  <!-- Üst Bilgi (Header) -->
+  <header class="sticky top-0 z-40 backdrop-blur-xl bg-white/80 dark:bg-navy-950/80 border-b border-slate-200/80 dark:border-slate-800/80 transition-colors">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <!-- Logo -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 text-white shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-lg sm:text-xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
+              Döviz <span class="text-emerald-600 dark:text-emerald-400">Takip</span>
+            </h1>
+            <p class="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium">
+              Merkez Bankası Referans Kurları
+            </p>
+          </div>
+        </div>
+
+        <!-- Sağ Kontroller: Tarih Rozeti, Yenile, Tema -->
+        <div class="flex items-center gap-2 sm:gap-3">
+          <!-- Son Güncelleme Tarihi Rozeti -->
+          <div id="lastUpdateBadge" class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/70 text-xs font-medium text-slate-600 dark:text-slate-300">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span id="lastUpdateText">Yükleniyor...</span>
+          </div>
+
+          <!-- Yenile Butonu -->
+          <button
+            id="refreshBtn"
+            type="button"
+            class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs sm:text-sm font-semibold shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+            title="Verileri Yenile"
+          >
+            <svg id="refreshIcon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span class="hidden sm:inline">Yenile</span>
+          </button>
+
+          <!-- Tema Değiştirici -->
+          <button
+            id="themeToggleBtn"
+            type="button"
+            class="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700/70 text-slate-700 dark:text-amber-300 transition-all active:scale-95 cursor-pointer"
+            aria-label="Temayı Değiştir"
+            title="Açık / Koyu Tema"
+          >
+            <!-- Güneş İkonu (Koyu temada görünür) -->
+            <svg id="sunIcon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            <!-- Ay İkonu (Açık temada görünür) -->
+            <svg id="moonIcon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Mobil Son Güncelleme Rozeti -->
+      <div class="sm:hidden mt-2.5 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span id="lastUpdateTextMobile">Veriler yükleniyor...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Ana İçerik -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-8">
+
+    <!-- Genel Hata Uyarı Kutusu -->
+    <div id="globalErrorBanner" class="hidden rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/70 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="flex items-start gap-3">
+        <div class="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-sm font-bold text-rose-800 dark:text-rose-300">Bağlantı Hatası</h3>
+          <p id="globalErrorMessage" class="text-xs sm:text-sm text-rose-700 dark:text-rose-200/80 mt-0.5">
+            Güncel döviz kurları alınırken bir sorun oluştu. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.
+          </p>
+        </div>
+      </div>
+      <button id="retryGlobalBtn" type="button" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs sm:text-sm font-semibold transition-colors shrink-0 cursor-pointer">
+        Tekrar Dene
+      </button>
+    </div>
+
+    <!-- 1. Öne Çıkan Kur Kartları (USD, EUR, GBP, CHF) -->
+    <section aria-labelledby="featuredHeading">
+      <div class="flex items-center justify-between mb-4">
+        <h2 id="featuredHeading" class="text-sm sm:text-base font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          Öne Çıkan Kurlar
+        </h2>
+        <span class="text-xs text-slate-500 dark:text-slate-400 hidden sm:inline">
+          Grafiği görmek için bir karta tıklayın
+        </span>
+      </div>
+
+      <div id="featuredCardsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Skeleton Yükleyiciler -->
+        <div class="rounded-2xl p-5 bg-white/80 dark:bg-navy-800/60 border border-slate-200/80 dark:border-slate-700/50 animate-pulse space-y-4">
+          <div class="flex justify-between items-center">
+            <div class="h-6 w-24 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
+            <div class="h-6 w-16 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
+          </div>
+          <div class="h-9 w-36 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
+          <div class="h-4 w-28 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
+        </div>
+        <div class="rounded-2xl p-5 bg-white/80 dark:bg-navy-800/60 border border-slate-200/80 dark:border-slate-700/50 animate-pulse space-y-4">
+          <div class="flex justify-between items-center">
+            <div class="h-6 w-24 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
+            <div class="h-6 w-16 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
+          </div>
+          <div class="h-9 w-36 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
+          <div class="h-4 w-28 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
+        </div>
+        <div class="rounded-2xl p-5 bg-white/80 dark:bg-navy-800/60 border border-slate-200/80 dark:border-slate-700/50 animate-pulse space-y-4">
+          <div class="flex justify-between items-center">
+            <div class="h-6 w-24 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
+            <div class="h-6 w-16 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
+          </div>
+          <div class="h-9 w-36 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
+          <div class="h-4 w-28 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
+        </div>
+        <div class="rounded-2xl p-5 bg-white/80 dark:bg-navy-800/60 border border-slate-200/80 dark:border-slate-700/50 animate-pulse space-y-4">
+          <div class="flex justify-between items-center">
+            <div class="h-6 w-24 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
+            <div class="h-6 w-16 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
+          </div>
+          <div class="h-9 w-36 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
+          <div class="h-4 w-28 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Hızlı Döviz Çevirici & İnteraktif Kur Grafiği -->
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+      <!-- Hızlı Döviz Çevirici (Sol 5 Kolon) -->
+      <div class="lg:col-span-5 rounded-3xl p-5 sm:p-6 bg-white/90 dark:bg-navy-800/65 backdrop-blur-xl border border-slate-200/80 dark:border-slate-700/60 shadow-xl shadow-slate-900/5 dark:shadow-black/20">
+        <div class="flex items-center justify-between mb-5">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Hızlı Döviz Çevirici</h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Anlık çift yönlü hesaplama</p>
+          </div>
+          <div class="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+          </div>
+        </div>
+
+        <!-- Kaynak Tutar & Birim -->
+        <div class="space-y-4">
+          <div class="rounded-2xl p-4 bg-slate-50 dark:bg-navy-900/80 border border-slate-200 dark:border-slate-700/70 focus-within:border-emerald-500 dark:focus-within:border-emerald-400 transition-colors">
+            <label for="convFromAmount" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">
+              Çevrilecek Tutar
+            </label>
+            <div class="flex items-center gap-3">
+              <input
+                id="convFromAmount"
+                type="number"
+                min="0"
+                step="any"
+                value="1000"
+                class="w-full bg-transparent text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white focus:outline-none tabular-nums"
+                placeholder="0,00"
+              />
+              <select
+                id="convFromCurrency"
+                class="shrink-0 rounded-xl px-3 py-2.5 bg-white dark:bg-navy-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+              ></select>
+            </div>
+          </div>
+
+          <!-- Hızlı Tutar Butonları -->
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs font-medium text-slate-500 dark:text-slate-400 mr-1">Hızlı:</span>
+            <button type="button" data-quick-amount="100" class="quick-amount-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-emerald-500 hover:text-white dark:bg-slate-800 dark:hover:bg-emerald-600 text-slate-700 dark:text-slate-300 transition-colors cursor-pointer">100</button>
+            <button type="button" data-quick-amount="500" class="quick-amount-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-emerald-500 hover:text-white dark:bg-slate-800 dark:hover:bg-emerald-600 text-slate-700 dark:text-slate-300 transition-colors cursor-pointer">500</button>
+            <button type="button" data-quick-amount="1000" class="quick-amount-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-emerald-500 hover:text-white dark:bg-slate-800 dark:hover:bg-emerald-600 text-slate-700 dark:text-slate-300 transition-colors cursor-pointer">1.000</button>
+            <button type="button" data-quick-amount="10000" class="quick-amount-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-emerald-500 hover:text-white dark:bg-slate-800 dark:hover:bg-emerald-600 text-slate-700 dark:text-slate-300 transition-colors cursor-pointer">10.000</button>
+          </div>
+
+          <!-- Yer Değiştirme (Swap) Butonu -->
+          <div class="relative flex items-center justify-center py-1">
+            <div class="w-full border-t border-slate-200 dark:border-slate-700/70"></div>
+            <button
+              id="swapCurrenciesBtn"
+              type="button"
+              class="absolute w-11 h-11 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/30 flex items-center justify-center transition-transform duration-300 active:scale-90 cursor-pointer"
+              title="Para Birimlerini Değiştir"
+              aria-label="Para Birimlerini Değiştir"
+            >
+              <svg id="swapIcon" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Hedef Tutar & Birim -->
+          <div class="rounded-2xl p-4 bg-slate-50 dark:bg-navy-900/80 border border-slate-200 dark:border-slate-700/70 focus-within:border-emerald-500 dark:focus-within:border-emerald-400 transition-colors">
+            <label for="convToAmount" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">
+              Karşılığı
+            </label>
+            <div class="flex items-center gap-3">
+              <input
+                id="convToAmount"
+                type="number"
+                min="0"
+                step="any"
+                class="w-full bg-transparent text-2xl sm:text-3xl font-bold text-emerald-600 dark:text-emerald-400 focus:outline-none tabular-nums"
+                placeholder="0,00"
+              />
+              <select
+                id="convToCurrency"
+                class="shrink-0 rounded-xl px-3 py-2.5 bg-white dark:bg-navy-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+              ></select>
+            </div>
+          </div>
+
+          <!-- Birim Kur Bilgisi -->
+          <div class="rounded-2xl p-3.5 bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/70 dark:border-emerald-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            <div class="font-semibold text-slate-700 dark:text-slate-200" id="unitRatePrimary">1 USD = — TRY</div>
+            <div class="text-slate-500 dark:text-slate-400" id="unitRateInverse">1 TRY = — USD</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- İnteraktif Kur Grafiği (Sağ 7 Kolon) -->
+      <div id="chartSection" class="lg:col-span-7 rounded-3xl p-5 sm:p-6 bg-white/90 dark:bg-navy-800/65 backdrop-blur-xl border border-slate-200/80 dark:border-slate-700/60 shadow-xl shadow-slate-900/5 dark:shadow-black/20">
+        <!-- Grafik Üst Bar -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h2 id="chartTitle" class="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                🇺🇸 USD / 🇹🇷 TRY
+              </h2>
+              <span id="chartPairSubtitle" class="text-xs px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium">
+                Amerikan Doları → Türk Lirası
+              </span>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Tarihsel kur hareketleri ve dönem özeti
+            </p>
+          </div>
+
+          <!-- Zaman Aralığı Seçici -->
+          <div class="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-navy-900 border border-slate-200 dark:border-slate-700/70 self-start sm:self-auto">
+            <button type="button" data-range="7G" class="range-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer">7G</button>
+            <button type="button" data-range="1A" class="range-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer">1A</button>
+            <button type="button" data-range="3A" class="range-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer">3A</button>
+            <button type="button" data-range="1Y" class="range-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer">1Y</button>
+          </div>
+        </div>
+
+        <!-- Dönem İstatistik Kutuları -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+          <div class="rounded-2xl p-3 bg-slate-50 dark:bg-navy-900/70 border border-slate-200/70 dark:border-slate-700/50">
+            <div class="text-[11px] font-semibold text-slate-500 dark:text-slate-400">En Düşük</div>
+            <div id="statMin" class="text-sm sm:text-base font-bold text-slate-900 dark:text-white mt-0.5 tabular-nums">—</div>
+          </div>
+          <div class="rounded-2xl p-3 bg-slate-50 dark:bg-navy-900/70 border border-slate-200/70 dark:border-slate-700/50">
+            <div class="text-[11px] font-semibold text-slate-500 dark:text-slate-400">En Yüksek</div>
+            <div id="statMax" class="text-sm sm:text-base font-bold text-slate-900 dark:text-white mt-0.5 tabular-nums">—</div>
+          </div>
+          <div class="rounded-2xl p-3 bg-slate-50 dark:bg-navy-900/70 border border-slate-200/70 dark:border-slate-700/50">
+            <div class="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Ortalama</div>
+            <div id="statAvg" class="text-sm sm:text-base font-bold text-slate-900 dark:text-white mt-0.5 tabular-nums">—</div>
+          </div>
+          <div class="rounded-2xl p-3 bg-slate-50 dark:bg-navy-900/70 border border-slate-200/70 dark:border-slate-700/50">
+            <div class="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Dönem Değişimi</div>
+            <div id="statChange" class="text-sm sm:text-base font-bold mt-0.5 tabular-nums">—</div>
+          </div>
+        </div>
+
+        <!-- Grafik Alanı -->
+        <div class="relative w-full h-64 sm:h-72 rounded-2xl bg-slate-50/70 dark:bg-navy-900/50 border border-slate-200/60 dark:border-slate-800/70 p-2 sm:p-3">
+          <!-- Yükleniyor Overlay -->
+          <div id="chartLoader" class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/75 dark:bg-navy-900/75 backdrop-blur-sm rounded-2xl transition-opacity">
+            <div class="w-8 h-8 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin"></div>
+            <span class="text-xs font-medium text-slate-600 dark:text-slate-300 mt-2.5">Grafik verileri yükleniyor...</span>
+          </div>
+
+          <!-- Grafik Hata Overlay -->
+          <div id="chartError" class="hidden absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/90 dark:bg-navy-900/90 backdrop-blur-sm rounded-2xl p-4 text-center">
+            <p class="text-sm font-semibold text-rose-600 dark:text-rose-400">Grafik verisi alınamadı</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-3">Lütfen bağlantınızı kontrol edip tekrar deneyin.</p>
+            <button id="retryChartBtn" type="button" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold cursor-pointer">
+              Tekrar Dene
+            </button>
+          </div>
+
+          <canvas id="rateChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Tüm Kurlar Tablosu -->
+    <section class="rounded-3xl p-5 sm:p-6 bg-white/90 dark:bg-navy-800/65 backdrop-blur-xl border border-slate-200/80 dark:border-slate-700/60 shadow-xl shadow-slate-900/5 dark:shadow-black/20">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-5">
+        <div>
+          <h2 class="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">Tüm Döviz Kurları</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            Favori kurlarınızı yıldızlayabilir, baz para birimini değiştirebilirsiniz
+          </p>
+        </div>
+
+        <!-- Filtreler ve Kontroller -->
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <!-- Arama Kutusu -->
+          <div class="relative flex-1 sm:w-60">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              id="tableSearchInput"
+              type="text"
+              placeholder="Para birimi ara (USD, Euro...)"
+              class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-navy-900 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+
+          <!-- Sadece Favoriler Filtresi -->
+          <button
+            id="favoritesFilterBtn"
+            type="button"
+            class="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-navy-900 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 hover:border-amber-400 transition-colors cursor-pointer"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+            </svg>
+            <span>Favoriler</span>
+            <span id="favoritesCountBadge" class="px-1.5 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-[11px] font-bold">0</span>
+          </button>
+
+          <!-- Baz Para Birimi Seçimi -->
+          <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-navy-900 border border-slate-200 dark:border-slate-700">
+            <label for="baseCurrencySelect" class="text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">Baz:</label>
+            <select
+              id="baseCurrencySelect"
+              class="bg-transparent text-xs sm:text-sm font-bold text-slate-900 dark:text-white focus:outline-none cursor-pointer py-1"
+            ></select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tablo Konteyneri -->
+      <div class="overflow-x-auto rounded-2xl border border-slate-200/80 dark:border-slate-700/60">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-slate-50 dark:bg-navy-900/90 border-b border-slate-200 dark:border-slate-700/70 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              <th class="py-3.5 pl-4 pr-2 w-10 text-center">Fav</th>
+              <th class="py-3.5 px-3">Para Birimi</th>
+              <th class="py-3.5 px-3 text-right" id="rateColumnHeader">Karşılık (TRY)</th>
+              <th class="py-3.5 px-3 text-right">Günlük Değişim</th>
+              <th class="py-3.5 pl-3 pr-4 text-right">İşlem</th>
+            </tr>
+          </thead>
+          <tbody id="ratesTableBody" class="divide-y divide-slate-200/70 dark:divide-slate-800/80 text-sm">
+            <!-- Yükleniyor Satırları -->
+            <tr>
+              <td colspan="5" class="py-12 text-center text-slate-500 dark:text-slate-400">
+                <div class="inline-flex items-center gap-3">
+                  <div class="w-5 h-5 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin"></div>
+                  <span>Kurlar yükleniyor...</span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Alt Bilgi (Footer) -->
+  <footer class="mt-12 border-t border-slate-200/80 dark:border-slate-800/80 bg-white/60 dark:bg-navy-950/60 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400">
+      <div class="flex items-center gap-2 text-center sm:text-left">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+        <p>
+          Veriler ücretsiz ve açık kaynaklı
+          <a href="https://frankfurter.dev" target="_blank" rel="noopener noreferrer" class="font-semibold text-emerald-600 dark:text-emerald-400 hover:underline">
+            Frankfurter API (api.frankfurter.dev)
+          </a>
+          üzerinden Avrupa Merkez Bankası (ECB) referans kurları olarak sağlanmaktadır.
+        </p>
+      </div>
+      <div class="shrink-0 font-medium">
+        Döviz Takip &copy; <span id="currentYear"></span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Uygulama JavaScript Kodu -->
+  <script>
+    /**
+     * Döviz Takip Uygulaması
+     * Veri Kaynağı: Frankfurter API (https://api.frankfurter.dev)
+     */
+
+    const API_BASE = 'https://api.frankfurter.dev/v1';
+
+    // Popüler para birimleri için Türkçe isimler ve bayrak emojileri
+    const CURRENCY_META = {
+      TRY: { name: 'Türk Lirası', flag: '🇹🇷' },
+      USD: { name: 'Amerikan Doları', flag: '🇺🇸' },
+      EUR: { name: 'Euro', flag: '🇪🇺' },
+      GBP: { name: 'İngiliz Sterlini', flag: '🇬🇧' },
+      CHF: { name: 'İsviçre Frangı', flag: '🇨🇭' },
+      JPY: { name: 'Japon Yeni', flag: '🇯🇵' },
+      CAD: { name: 'Kanada Doları', flag: '🇨🇦' },
+      AUD: { name: 'Avustralya Doları', flag: '🇦🇺' },
+      CNY: { name: 'Çin Yuanı', flag: '🇨🇳' },
+      SEK: { name: 'İsveç Kronu', flag: '🇸🇪' },
+      NOK: { name: 'Norveç Kronu', flag: '🇳🇴' },
+      DKK: { name: 'Danimarka Kronu', flag: '🇩🇰' },
+      PLN: { name: 'Polonya Zlotisi', flag: '🇵🇱' },
+      BRL: { name: 'Brezilya Reali', flag: '🇧🇷' },
+      INR: { name: 'Hint Rupisi', flag: '🇮🇳' },
+      KRW: { name: 'Güney Kore Wonu', flag: '🇰🇷' },
+      MXN: { name: 'Meksika Pesosu', flag: '🇲🇽' },
+      ZAR: { name: 'Güney Afrika Randı', flag: '🇿🇦' },
+      BGN: { name: 'Bulgar Levası', flag: '🇧🇬' },
+      CZK: { name: 'Çek Korunası', flag: '🇨🇿' },
+      HKD: { name: 'Hong Kong Doları', flag: '🇭🇰' },
+      HUF: { name: 'Macar Forinti', flag: '🇭🇺' },
+      IDR: { name: 'Endonezya Rupiahı', flag: '🇮🇩' },
+      ILS: { name: 'İsrail Şekeli', flag: '🇮🇱' },
+      ISK: { name: 'İzlanda Kronu', flag: '🇮🇸' },
+      MYR: { name: 'Malezya Ringgiti', flag: '🇲🇾' },
+      NZD: { name: 'Yeni Zelanda Doları', flag: '🇳🇿' },
+      PHP: { name: 'Filipin Pesosu', flag: '🇵🇭' },
+      RON: { name: 'Rumen Leyi', flag: '🇷🇴' },
+      SGD: { name: 'Singapur Doları', flag: '🇸🇬' },
+      THB: { name: 'Tayland Bahtı', flag: '🇹🇭' },
+    };
+
+    // Öne çıkan 4 ana döviz kartı
+    const FEATURED_CURRENCIES = ['USD', 'EUR', 'GBP', 'CHF'];
+
+    // Uygulama Durumu (State)
+    const state = {
+      currencies: {},          // { USD: "Amerikan Doları", ... }
+      latestDate: null,        // "YYYY-MM-DD"
+      latestRatesTRY: {},      // 1 TRY = X Currency (TRY: 1 dahil)
+      prevRatesTRY: {},        // Bir önceki iş günü 1 TRY = X Currency
+      favorites: loadFavorites(),
+      onlyFavorites: false,
+      searchQuery: '',
+      tableBaseCurrency: 'TRY',
+      chartFrom: 'USD',
+      chartTo: 'TRY',
+      chartRange: '1A',
+      chartInstance: null,
+      lastConverterInput: 'from', // 'from' veya 'to'
+    };
+
+    // DOM Referansları
+    const els = {
+      lastUpdateText: document.getElementById('lastUpdateText'),
+      lastUpdateTextMobile: document.getElementById('lastUpdateTextMobile'),
+      refreshBtn: document.getElementById('refreshBtn'),
+      refreshIcon: document.getElementById('refreshIcon'),
+      themeToggleBtn: document.getElementById('themeToggleBtn'),
+      globalErrorBanner: document.getElementById('globalErrorBanner'),
+      globalErrorMessage: document.getElementById('globalErrorMessage'),
+      retryGlobalBtn: document.getElementById('retryGlobalBtn'),
+      featuredCardsGrid: document.getElementById('featuredCardsGrid'),
+      convFromAmount: document.getElementById('convFromAmount'),
+      convToAmount: document.getElementById('convToAmount'),
+      convFromCurrency: document.getElementById('convFromCurrency'),
+      convToCurrency: document.getElementById('convToCurrency'),
+      swapCurrenciesBtn: document.getElementById('swapCurrenciesBtn'),
+      swapIcon: document.getElementById('swapIcon'),
+      unitRatePrimary: document.getElementById('unitRatePrimary'),
+      unitRateInverse: document.getElementById('unitRateInverse'),
+      chartSection: document.getElementById('chartSection'),
+      chartTitle: document.getElementById('chartTitle'),
+      chartPairSubtitle: document.getElementById('chartPairSubtitle'),
+      chartLoader: document.getElementById('chartLoader'),
+      chartError: document.getElementById('chartError'),
+      retryChartBtn: document.getElementById('retryChartBtn'),
+      statMin: document.getElementById('statMin'),
+      statMax: document.getElementById('statMax'),
+      statAvg: document.getElementById('statAvg'),
+      statChange: document.getElementById('statChange'),
+      tableSearchInput: document.getElementById('tableSearchInput'),
+      favoritesFilterBtn: document.getElementById('favoritesFilterBtn'),
+      favoritesCountBadge: document.getElementById('favoritesCountBadge'),
+      baseCurrencySelect: document.getElementById('baseCurrencySelect'),
+      rateColumnHeader: document.getElementById('rateColumnHeader'),
+      ratesTableBody: document.getElementById('ratesTableBody'),
+      toastContainer: document.getElementById('toastContainer'),
+      currentYear: document.getElementById('currentYear'),
+    };
+
+    // --- Yardımcı Fonksiyonlar ---
+
+    function loadFavorites() {
+      try {
+        const saved = localStorage.getItem('doviz_takip_favorites');
+        if (saved) return JSON.parse(saved);
+      } catch (e) {
+        console.warn('Favoriler okunamadı:', e);
+      }
+      return ['USD', 'EUR', 'GBP'];
+    }
+
+    function saveFavorites() {
+      try {
+        localStorage.setItem('doviz_takip_favorites', JSON.stringify(state.favorites));
+      } catch (e) {
+        console.warn('Favoriler kaydedilemedi:', e);
+      }
+    }
+
+    function getCurrencyMeta(code) {
+      if (CURRENCY_META[code]) return CURRENCY_META[code];
+      return {
+        name: state.currencies[code] || code,
+        flag: '🌐',
+      };
+    }
+
+    function formatNumberTR(num, minDec = 4, maxDec = 4) {
+      if (num === null || num === undefined || isNaN(num)) return '—';
+      return new Intl.NumberFormat('tr-TR', {
+        minimumFractionDigits: minDec,
+        maximumFractionDigits: maxDec,
+      }).format(num);
+    }
+
+    function formatDateTR(isoDate) {
+      if (!isoDate) return '—';
+      const [y, m, d] = isoDate.split('-');
+      const months = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+      return `${parseInt(d, 10)} ${months[parseInt(m, 10) - 1]} ${y}`;
+    }
+
+    function shiftDate(isoDate, daysDelta) {
+      const date = new Date(isoDate + 'T12:00:00Z');
+      date.setUTCDate(date.getUTCDate() + daysDelta);
+      return date.toISOString().split('T')[0];
+    }
+
+    function showToast(message, type = 'success') {
+      const toast = document.createElement('div');
+      const colors =
+        type === 'error'
+          ? 'bg-rose-600 text-white'
+          : 'bg-slate-900 dark:bg-emerald-600 text-white';
+
+      toast.className = `pointer-events-auto px-4 py-3 rounded-2xl shadow-xl text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all duration-300 translate-y-2 opacity-0 ${colors}`;
+      toast.textContent = message;
+      els.toastContainer.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 2800);
+    }
+
+    /**
+     * 1 `fromCode` biriminin `toCode` cinsinden değerini hesaplar.
+     * latestRatesTRY içinde 1 TRY = rates[X] X şeklinde tutulur.
+     */
+    function getCrossRate(fromCode, toCode, ratesObj = state.latestRatesTRY) {
+      const rFrom = ratesObj[fromCode];
+      const rTo = ratesObj[toCode];
+      if (!rFrom || !rTo) return null;
+      return rTo / rFrom;
+    }
+
+    /**
+     * Günlük yüzde değişimi hesaplar (1 `currency` kaç `base` ediyor değişimi).
+     */
+    function getDailyChangePercent(currency, base = 'TRY') {
+      const todayVal = getCrossRate(currency, base, state.latestRatesTRY);
+      const prevVal = getCrossRate(currency, base, state.prevRatesTRY);
+      if (!todayVal || !prevVal) return null;
+      return ((todayVal - prevVal) / prevVal) * 100;
+    }
+
+    function renderChangeBadge(pct) {
+      if (pct === null || isNaN(pct)) {
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">%0,00</span>`;
+      }
+      const isUp = pct > 0.0001;
+      const isDown = pct < -0.0001;
+      const formatted = formatNumberTR(Math.abs(pct), 2, 2);
+
+      if (isUp) {
+        return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">▲ +%${formatted}</span>`;
+      }
+      if (isDown) {
+        return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400">▼ -%${formatted}</span>`;
+      }
+      return `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-200/70 dark:bg-slate-700/70 text-slate-600 dark:text-slate-300">• %0,00</span>`;
+    }
+
+    // --- Tema Yönetimi ---
+
+    function initTheme() {
+      const savedTheme = localStorage.getItem('doviz_takip_theme');
+      if (savedTheme === 'light') {
+        document.documentElement.classList.remove('dark');
+      } else {
+        document.documentElement.classList.add('dark');
+      }
+    }
+
+    function toggleTheme() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('doviz_takip_theme', isDark ? 'dark' : 'light');
+      // Grafik renklerini yeni temaya uyarla
+      if (state.chartInstance) {
+        updateChartTheme();
+      }
+    }
+
+    // --- Veri Çekme (Frankfurter API) ---
+
+    async function fetchAllData(isManualRefresh = false) {
+      els.globalErrorBanner.classList.add('hidden');
+      els.refreshIcon.classList.add('animate-spin');
+      els.refreshBtn.disabled = true;
+
+      try {
+        // 1. Desteklenen para birimleri ve TRY bazlı güncel kurları paralel çek
+        const [currenciesRes, latestRes] = await Promise.all([
+          fetch(`${API_BASE}/currencies`),
+          fetch(`${API_BASE}/latest?base=TRY`),
+        ]);
+
+        if (!currenciesRes.ok || !latestRes.ok) {
+          throw new Error('API yanıt vermedi.');
+        }
+
+        const currenciesData = await currenciesRes.json();
+        const latestData = await latestRes.json();
+
+        state.currencies = currenciesData;
+        state.latestDate = latestData.date;
+        state.latestRatesTRY = { ...latestData.rates, TRY: 1 };
+
+        // 2. Bir önceki iş gününü bulmak için latest tarihinden 7 gün öncesine istek at
+        let startDate = shiftDate(state.latestDate, -7);
+        let historyRes = await fetch(`${API_BASE}/${startDate}..${state.latestDate}?base=TRY`);
+        if (historyRes.ok) {
+          const historyData = await historyRes.json();
+          let dates = Object.keys(historyData.rates || {}).sort();
+
+          // Uzun tatil dönemi nedeniyle 2 iş gününden az geldiyse 14 gün geriye bak
+          if (dates.length < 2) {
+            startDate = shiftDate(state.latestDate, -14);
+            historyRes = await fetch(`${API_BASE}/${startDate}..${state.latestDate}?base=TRY`);
+            if (historyRes.ok) {
+              const fallbackData = await historyRes.json();
+              dates = Object.keys(fallbackData.rates || {}).sort();
+              if (dates.length >= 2) {
+                const prevDate = dates[dates.length - 2];
+                state.prevRatesTRY = { ...fallbackData.rates[prevDate], TRY: 1 };
+              }
+            }
+          } else {
+            const prevDate = dates[dates.length - 2];
+            state.prevRatesTRY = { ...historyData.rates[prevDate], TRY: 1 };
+          }
+        }
+
+        // Tarih rozetlerini güncelle
+        const dateLabel = `Son Güncelleme: ${formatDateTR(state.latestDate)}`;
+        els.lastUpdateText.textContent = dateLabel;
+        els.lastUpdateTextMobile.textContent = dateLabel;
+
+        // Arayüz bileşenlerini doldur
+        populateCurrencySelects();
+        renderFeaturedCards();
+        calculateConverter();
+        renderRatesTable();
+        await loadChartData();
+
+        if (isManualRefresh) {
+          showToast('Kurlar başarıyla güncellendi.');
+        }
+      } catch (err) {
+        console.error('Veri çekme hatası:', err);
+        els.globalErrorBanner.classList.remove('hidden');
+        els.globalErrorMessage.textContent =
+          'Frankfurter API sunucusuna bağlanılamadı. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.';
+        showToast('Veriler alınırken hata oluştu.', 'error');
+      } finally {
+        els.refreshIcon.classList.remove('animate-spin');
+        els.refreshBtn.disabled = false;
+      }
+    }
+
+    // --- Select Kutularını Doldurma ---
+
+    function populateCurrencySelects() {
+      const codes = Object.keys(state.latestRatesTRY).sort((a, b) => {
+        const priority = ['TRY', 'USD', 'EUR', 'GBP', 'CHF', 'JPY', 'CAD', 'AUD'];
+        const iA = priority.indexOf(a);
+        const iB = priority.indexOf(b);
+        if (iA !== -1 && iB !== -1) return iA - iB;
+        if (iA !== -1) return -1;
+        if (iB !== -1) return 1;
+        return a.localeCompare(b);
+      });
+
+      const prevFrom = els.convFromCurrency.value || 'USD';
+      const prevTo = els.convToCurrency.value || 'TRY';
+      const prevBase = els.baseCurrencySelect.value || state.tableBaseCurrency || 'TRY';
+
+      const buildOptions = (selected) =>
+        codes
+          .map((code) => {
+            const meta = getCurrencyMeta(code);
+            return `<option value="${code}" ${code === selected ? 'selected' : ''}>${meta.flag} ${code}</option>`;
+          })
+          .join('');
+
+      els.convFromCurrency.innerHTML = buildOptions(prevFrom);
+      els.convToCurrency.innerHTML = buildOptions(prevTo);
+      els.baseCurrencySelect.innerHTML = buildOptions(prevBase);
+    }
+
+    // --- 1. Öne Çıkan Kur Kartları ---
+
+    function renderFeaturedCards() {
+      const html = FEATURED_CURRENCIES.map((code) => {
+        const meta = getCurrencyMeta(code);
+        const rateTRY = getCrossRate(code, 'TRY');
+        const pct = getDailyChangePercent(code, 'TRY');
+        const isActiveChart = state.chartFrom === code && state.chartTo === 'TRY';
+
+        return `
+          <button
+            type="button"
+            onclick="selectChartPair('${code}', 'TRY', true)"
+            class="group text-left w-full rounded-2xl p-5 bg-white/90 dark:bg-navy-800/65 backdrop-blur-xl border ${
+              isActiveChart
+                ? 'border-emerald-500 ring-2 ring-emerald-500/20'
+                : 'border-slate-200/80 dark:border-slate-700/60 hover:border-emerald-400/70 dark:hover:border-emerald-500/60'
+            } shadow-lg shadow-slate-900/5 dark:shadow-black/20 transition-all duration-200 hover:-translate-y-0.5 cursor-pointer"
+          >
+            <div class="flex items-center justify-between gap-2 mb-3">
+              <div class="flex items-center gap-2.5">
+                <span class="text-2xl leading-none">${meta.flag}</span>
+                <div>
+                  <div class="text-sm font-extrabold text-slate-900 dark:text-white tracking-tight">${code}/TRY</div>
+                  <div class="text-[11px] font-medium text-slate-500 dark:text-slate-400">${meta.name}</div>
+                </div>
+              </div>
+              ${renderChangeBadge(pct)}
+            </div>
+
+            <div class="flex items-baseline justify-between gap-2 mt-4">
+              <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tabular-nums tracking-tight">
+                ₺${formatNumberTR(rateTRY, 4, 4)}
+              </div>
+              <span class="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+                Grafik
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </span>
+            </div>
+          </button>
+        `;
+      }).join('');
+
+      els.featuredCardsGrid.innerHTML = html;
+    }
+
+    // --- 2. Hızlı Döviz Çevirici ---
+
+    function calculateConverter() {
+      const fromCode = els.convFromCurrency.value || 'USD';
+      const toCode = els.convToCurrency.value || 'TRY';
+
+      const rate = getCrossRate(fromCode, toCode);
+      const invRate = getCrossRate(toCode, fromCode);
+
+      if (!rate || !invRate) return;
+
+      els.unitRatePrimary.textContent = `1 ${fromCode} = ${formatNumberTR(rate, 4, 4)} ${toCode}`;
+      els.unitRateInverse.textContent = `1 ${toCode} = ${formatNumberTR(invRate, 4, 4)} ${fromCode}`;
+
+      if (state.lastConverterInput === 'from') {
+        const val = parseFloat(els.convFromAmount.value);
+        if (isNaN(val) || val < 0) {
+          els.convToAmount.value = '';
+        } else {
+          const result = val * rate;
+          els.convToAmount.value = Number(result.toFixed(4));
+        }
+      } else {
+        const val = parseFloat(els.convToAmount.value);
+        if (isNaN(val) || val < 0) {
+          els.convFromAmount.value = '';
+        } else {
+          const result = val * invRate;
+          els.convFromAmount.value = Number(result.toFixed(4));
+        }
+      }
+    }
+
+    // --- 3. İnteraktif Kur Grafiği (Chart.js) ---
+
+    function updateRangeButtonsUI() {
+      document.querySelectorAll('.range-btn').forEach((btn) => {
+        const isActive = btn.dataset.range === state.chartRange;
+        if (isActive) {
+          btn.className =
+            'range-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer bg-emerald-600 text-white shadow-sm';
+        } else {
+          btn.className =
+            'range-btn px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white';
+        }
+      });
+    }
+
+    window.selectChartPair = function (fromCode, toCode = 'TRY', shouldScroll = false) {
+      if (fromCode === toCode) {
+        toCode = fromCode === 'TRY' ? 'USD' : 'TRY';
+      }
+      state.chartFrom = fromCode;
+      state.chartTo = toCode;
+      renderFeaturedCards();
+      loadChartData();
+
+      if (shouldScroll) {
+        els.chartSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    };
+
+    async function loadChartData() {
+      const fromMeta = getCurrencyMeta(state.chartFrom);
+      const toMeta = getCurrencyMeta(state.chartTo);
+
+      els.chartTitle.textContent = `${fromMeta.flag} ${state.chartFrom} / ${toMeta.flag} ${state.chartTo}`;
+      els.chartPairSubtitle.textContent = `${fromMeta.name} → ${toMeta.name}`;
+      updateRangeButtonsUI();
+
+      els.chartLoader.classList.remove('hidden');
+      els.chartError.classList.add('hidden');
+
+      try {
+        const endDate = state.latestDate || new Date().toISOString().split('T')[0];
+        let daysBack = 30;
+        if (state.chartRange === '7G') daysBack = 7;
+        else if (state.chartRange === '1A') daysBack = 30;
+        else if (state.chartRange === '3A') daysBack = 90;
+        else if (state.chartRange === '1Y') daysBack = 365;
+
+        const startDate = shiftDate(endDate, -daysBack);
+        const url = `${API_BASE}/${startDate}..${endDate}?base=${state.chartFrom}&symbols=${state.chartTo}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Grafik verisi alınamadı');
+
+        const data = await res.json();
+        const rawDates = Object.keys(data.rates || {}).sort();
+        const values = rawDates.map((d) => data.rates[d][state.chartTo]).filter((v) => typeof v === 'number');
+
+        if (values.length === 0) throw new Error('Veri bulunamadı');
+
+        // Dönem istatistiklerini hesapla
+        const minVal = Math.min(...values);
+        const maxVal = Math.max(...values);
+        const avgVal = values.reduce((acc, v) => acc + v, 0) / values.length;
+        const firstVal = values[0];
+        const lastVal = values[values.length - 1];
+        const periodPct = ((lastVal - firstVal) / firstVal) * 100;
+
+        els.statMin.textContent = formatNumberTR(minVal, 4, 4);
+        els.statMax.textContent = formatNumberTR(maxVal, 4, 4);
+        els.statAvg.textContent = formatNumberTR(avgVal, 4, 4);
+
+        const isUp = periodPct >= 0;
+        els.statChange.className = `text-sm sm:text-base font-bold mt-0.5 tabular-nums ${
+          isUp ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+        }`;
+        els.statChange.textContent = `${isUp ? '▲ +' : '▼ -'}%${formatNumberTR(Math.abs(periodPct), 2, 2)}`;
+
+        renderChartCanvas(rawDates, values, isUp);
+      } catch (err) {
+        console.error('Grafik yükleme hatası:', err);
+        els.chartError.classList.remove('hidden');
+      } finally {
+        els.chartLoader.classList.add('hidden');
+      }
+    }
+
+    function renderChartCanvas(dates, values, isUp) {
+      const canvas = document.getElementById('rateChart');
+      const ctx = canvas.getContext('2d');
+
+      if (state.chartInstance) {
+        state.chartInstance.destroy();
+      }
+
+      const isDark = document.documentElement.classList.contains('dark');
+      const lineColor = isUp ? '#10b981' : '#f43f5e';
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.parentElement.clientHeight || 260);
+      gradient.addColorStop(0, isUp ? 'rgba(16, 185, 129, 0.30)' : 'rgba(244, 63, 94, 0.30)');
+      gradient.addColorStop(1, isUp ? 'rgba(16, 185, 129, 0.0)' : 'rgba(244, 63, 94, 0.0)');
+
+      const gridColor = isDark ? 'rgba(148, 163, 184, 0.12)' : 'rgba(148, 163, 184, 0.25)';
+      const tickColor = isDark ? '#94a3b8' : '#64748b';
+
+      state.chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: dates.map((d) => formatDateTR(d)),
+          datasets: [
+            {
+              label: `${state.chartFrom}/${state.chartTo}`,
+              data: values,
+              borderColor: lineColor,
+              backgroundColor: gradient,
+              borderWidth: 2.5,
+              fill: true,
+              tension: 0.35,
+              pointRadius: values.length <= 10 ? 3.5 : 0,
+              pointHoverRadius: 6,
+              pointBackgroundColor: lineColor,
+              pointBorderColor: isDark ? '#0b1120' : '#ffffff',
+              pointBorderWidth: 2,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: isDark ? '#0f172a' : '#1e293b',
+              titleColor: '#cbd5e1',
+              bodyColor: '#ffffff',
+              borderColor: 'rgba(148, 163, 184, 0.2)',
+              borderWidth: 1,
+              padding: 12,
+              cornerRadius: 12,
+              displayColors: false,
+              callbacks: {
+                label: (ctx) =>
+                  `1 ${state.chartFrom} = ${formatNumberTR(ctx.parsed.y, 4, 4)} ${state.chartTo}`,
+              },
+            },
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: {
+                color: tickColor,
+                maxTicksLimit: 6,
+                font: { family: 'Inter', size: 11 },
+              },
+            },
+            y: {
+              position: 'right',
+              grid: { color: gridColor },
+              ticks: {
+                color: tickColor,
+                font: { family: 'Inter', size: 11 },
+                callback: (val) => formatNumberTR(val, 2, 4),
+              },
+            },
+          },
+        },
+      });
+    }
+
+    function updateChartTheme() {
+      if (!state.chartInstance) return;
+      const isDark = document.documentElement.classList.contains('dark');
+      const gridColor = isDark ? 'rgba(148, 163, 184, 0.12)' : 'rgba(148, 163, 184, 0.25)';
+      const tickColor = isDark ? '#94a3b8' : '#64748b';
+
+      state.chartInstance.options.scales.x.ticks.color = tickColor;
+      state.chartInstance.options.scales.y.ticks.color = tickColor;
+      state.chartInstance.options.scales.y.grid.color = gridColor;
+      state.chartInstance.options.plugins.tooltip.backgroundColor = isDark ? '#0f172a' : '#1e293b';
+      state.chartInstance.update();
+    }
+
+    // --- 4. Tüm Kurlar Tablosu ---
+
+    window.toggleFavorite = function (code) {
+      const idx = state.favorites.indexOf(code);
+      if (idx === -1) {
+        state.favorites.push(code);
+      } else {
+        state.favorites.splice(idx, 1);
+      }
+      saveFavorites();
+      renderRatesTable();
+    };
+
+    function renderRatesTable() {
+      const base = state.tableBaseCurrency;
+      els.rateColumnHeader.textContent = `Karşılık (${base})`;
+      els.favoritesCountBadge.textContent = state.favorites.length;
+
+      // Favoriler filtresi buton görünümü
+      if (state.onlyFavorites) {
+        els.favoritesFilterBtn.classList.add('border-amber-400', 'bg-amber-50', 'dark:bg-amber-950/30');
+      } else {
+        els.favoritesFilterBtn.classList.remove('border-amber-400', 'bg-amber-50', 'dark:bg-amber-950/30');
+      }
+
+      const query = state.searchQuery.trim().toLocaleLowerCase('tr-TR');
+
+      // Baz para birimi dışındaki tüm para birimlerini listele
+      let codes = Object.keys(state.latestRatesTRY).filter((c) => c !== base);
+
+      if (state.onlyFavorites) {
+        codes = codes.filter((c) => state.favorites.includes(c));
+      }
+
+      if (query) {
+        codes = codes.filter((c) => {
+          const meta = getCurrencyMeta(c);
+          return (
+            c.toLowerCase().includes(query) ||
+            meta.name.toLocaleLowerCase('tr-TR').includes(query)
+          );
+        });
+      }
+
+      // Sıralama: Önce favoriler, sonra öne çıkanlar, sonra alfabetik
+      codes.sort((a, b) => {
+        const favA = state.favorites.includes(a) ? 1 : 0;
+        const favB = state.favorites.includes(b) ? 1 : 0;
+        if (favA !== favB) return favB - favA;
+
+        const featA = FEATURED_CURRENCIES.indexOf(a);
+        const featB = FEATURED_CURRENCIES.indexOf(b);
+        if (featA !== -1 && featB !== -1) return featA - featB;
+        if (featA !== -1) return -1;
+        if (featB !== -1) return 1;
+
+        return a.localeCompare(b);
+      });
+
+      if (codes.length === 0) {
+        els.ratesTableBody.innerHTML = `
+          <tr>
+            <td colspan="5" class="py-10 text-center text-slate-500 dark:text-slate-400 text-sm">
+              Arama kriterlerinize uygun para birimi bulunamadı.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      const rowsHtml = codes
+        .map((code) => {
+          const meta = getCurrencyMeta(code);
+          const isFav = state.favorites.includes(code);
+          const rate = getCrossRate(code, base);
+          const pct = getDailyChangePercent(code, base);
+
+          return `
+            <tr class="hover:bg-slate-50/90 dark:hover:bg-navy-900/60 transition-colors">
+              <td class="py-3.5 pl-4 pr-2 text-center">
+                <button
+                  type="button"
+                  onclick="toggleFavorite('${code}')"
+                  class="p-1.5 rounded-lg hover:bg-slate-200/70 dark:hover:bg-slate-700/70 transition-colors cursor-pointer"
+                  title="${isFav ? 'Favorilerden Çıkar' : 'Favorilere Ekle'}"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 ${
+                    isFav ? 'text-amber-400 fill-amber-400' : 'text-slate-300 dark:text-slate-600'
+                  }" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                  </svg>
+                </button>
+              </td>
+              <td class="py-3.5 px-3">
+                <div class="flex items-center gap-2.5">
+                  <span class="text-xl leading-none">${meta.flag}</span>
+                  <div>
+                    <div class="font-bold text-slate-900 dark:text-white leading-tight">${code}</div>
+                    <div class="text-xs text-slate-500 dark:text-slate-400">${meta.name}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="py-3.5 px-3 text-right font-bold text-slate-900 dark:text-white tabular-nums">
+                ${formatNumberTR(rate, 4, 4)} <span class="text-xs font-semibold text-slate-400">${base}</span>
+              </td>
+              <td class="py-3.5 px-3 text-right">
+                ${renderChangeBadge(pct)}
+              </td>
+              <td class="py-3.5 pl-3 pr-4 text-right">
+                <button
+                  type="button"
+                  onclick="selectChartPair('${code}', '${base}', true)"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-emerald-600 hover:text-white dark:bg-slate-800 dark:hover:bg-emerald-600 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+                  </svg>
+                  <span class="hidden sm:inline">Grafik Gör</span>
+                </button>
+              </td>
+            </tr>
+          `;
+        })
+        .join('');
+
+      els.ratesTableBody.innerHTML = rowsHtml;
+    }
+
+    // --- Olay Dinleyicileri (Event Listeners) ---
+
+    function bindEvents() {
+      // Yenile ve Tekrar Dene
+      els.refreshBtn.addEventListener('click', () => fetchAllData(true));
+      els.retryGlobalBtn.addEventListener('click', () => fetchAllData(false));
+      els.retryChartBtn.addEventListener('click', () => loadChartData());
+
+      // Tema Değiştirici
+      els.themeToggleBtn.addEventListener('click', toggleTheme);
+
+      // Çevirici Girişleri
+      els.convFromAmount.addEventListener('input', () => {
+        state.lastConverterInput = 'from';
+        calculateConverter();
+      });
+
+      els.convToAmount.addEventListener('input', () => {
+        state.lastConverterInput = 'to';
+        calculateConverter();
+      });
+
+      els.convFromCurrency.addEventListener('change', () => {
+        state.lastConverterInput = 'from';
+        calculateConverter();
+      });
+
+      els.convToCurrency.addEventListener('change', () => {
+        state.lastConverterInput = 'from';
+        calculateConverter();
+      });
+
+      // Hızlı Tutar Butonları
+      document.querySelectorAll('.quick-amount-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          els.convFromAmount.value = btn.dataset.quickAmount;
+          state.lastConverterInput = 'from';
+          calculateConverter();
+        });
+      });
+
+      // Swap Butonu
+      let swapRotated = false;
+      els.swapCurrenciesBtn.addEventListener('click', () => {
+        swapRotated = !swapRotated;
+        els.swapIcon.style.transform = swapRotated ? 'rotate(180deg)' : 'rotate(0deg)';
+        const temp = els.convFromCurrency.value;
+        els.convFromCurrency.value = els.convToCurrency.value;
+        els.convToCurrency.value = temp;
+        state.lastConverterInput = 'from';
+        calculateConverter();
+      });
+
+      // Grafik Zaman Aralığı Butonları
+      document.querySelectorAll('.range-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.chartRange = btn.dataset.range;
+          loadChartData();
+        });
+      });
+
+      // Tablo Arama
+      els.tableSearchInput.addEventListener('input', (e) => {
+        state.searchQuery = e.target.value;
+        renderRatesTable();
+      });
+
+      // Sadece Favoriler Filtresi
+      els.favoritesFilterBtn.addEventListener('click', () => {
+        state.onlyFavorites = !state.onlyFavorites;
+        renderRatesTable();
+      });
+
+      // Baz Para Birimi Seçimi
+      els.baseCurrencySelect.addEventListener('change', (e) => {
+        state.tableBaseCurrency = e.target.value;
+        renderRatesTable();
+      });
+    }
+
+    // --- Başlatma ---
+    document.addEventListener('DOMContentLoaded', () => {
+      els.currentYear.textContent = new Date().getFullYear();
+      initTheme();
+      bindEvents();
+      fetchAllData(false);
+    });
+  </script>
+</body>
+</html>
